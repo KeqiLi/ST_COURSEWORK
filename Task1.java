@@ -43,7 +43,7 @@ public class Task1 {
      * EntryMap Spec1: Template cannot be null. If null, runtime exception.
      */
     @Test (expected = RuntimeException.class) 
-    public void templateNullMap(){
+    public void MAP_SPEC1_TemplateNullMap(){
         map.store(null, "Adam", false);
     }
     
@@ -51,7 +51,7 @@ public class Task1 {
      * EntryMap Spec2: Replace value cannot be null. If null, runtime exception.
      */
     @Test (expected = RuntimeException.class) 
-    public void replaceNull(){
+    public void MAP_SPEC2_ReplaceNull(){
         map.store("day", null, false);
     }
     
@@ -64,7 +64,7 @@ public class Task1 {
      * case_sensitive.
      */
     @Test
-    public void caseSensitive() {
+    public void MAP_SPEC3_CaseSensitive() {
 
         map.store("name", "Adam", null);
         map2.store("name", "Adam", false);
@@ -80,16 +80,55 @@ public class Task1 {
     }
     
     /*
-     * EntryMap Spec4: 
+     * EntryMap Spec4: The engine matches templates with the first matching entry from the map.
      * 
      */
+    
+    @Test
+    public void MAP_SPEC4_EntryOrder(){
+    	map.store("name", "Adam", false);
+    	map.store("name", "Ben", false);
+    	
+    	String result = engine.evaluate("${name}, hello?", map, "keep-unmatched");
+    	
+    	map2.store("name", "Ben", false);
+    	map2.store("name", "Adam", false);
+    	
+    	String result2 = engine.evaluate("${name}, hello?", map2, "keep-unmatched");
+    	
+    	assertEquals(result, "Adam, hello?");
+    	assertEquals(result2, "Ben, hello?");
+    	
+    }
+    
+    /*
+     * EntryMap Spec5: Entries that already exist cannot be stored again.
+     * 
+     * Map2 should store the entry with "true" first, then entry with "false"
+     */
+    @Test
+    public void MAP_SPEC5_DuplicateEntries(){
+    	map.store("name", "Adam", true);
+    	String result = engine.evaluate("${Name}, hello?", map, "keep-unmatched");
+
+
+    	map2.store("name", "Adam", true);
+    	map2.store("name", "Adam", false);
+    	
+    	String result2 = engine.evaluate("${Name}, hello?", map2, "keep-unmatched");
+    	
+    	assertEquals(result, "${Name}, hello?");
+    	assertEquals(result2, "Adam, hello?");
+
+    	
+    }
     
     /*
      * TemplateEngine Spec1: Template string can be null or empty. If null or empty, unchanged
      * template string will be returned.
      */
     @Test
-    public void templateStringNullEngine() {
+    public void ENG_SPEC1_TemplateStringNullEngine() {
         map.store("name", "Adam", null);
         String result = engine.evaluate(null, map, "keep-unmatched");
         String result2 = engine.evaluate("", map, "keep-unmatched");
@@ -103,7 +142,7 @@ public class Task1 {
      * template string will be returned.
      */
     @Test
-    public void mapNullEngine() {
+    public void ENG_SPEC2_MapNullEngine() {
         String result = engine.evaluate("${name}! Hello!", null, "keep-unmatched");
         String result2 = engine.evaluate("${name}! Hello!", map, "keep-unmatched");
         
@@ -117,7 +156,7 @@ public class Task1 {
      * This test case should have passed with matching mode parameter being null.
      */
     @Test
-    public void matchingModeNull(){
+    public void ENG_SPEC3_MatchingModeNull(){
         map.store("name", "Adam", false);
         String result = engine.evaluate("${name}! Hello!", map, "delete-unmatched");
         String result2 = engine.evaluate("${name}! Hello!", map, null);
@@ -131,7 +170,7 @@ public class Task1 {
      * TemplateEngine Spec4: template boundaries are omitted.
      */
     @Test
-    public void templateBoundaries(){
+    public void ENG_SPEC4_TemplateBoundaries(){
         map.store("name", "Adam", false);
         String result = engine.evaluate("${name}! Hello!", map, "keep-unmatched");
         String result2 = engine.evaluate("name! Hello!", map, "keep-unmatched");
@@ -144,7 +183,7 @@ public class Task1 {
      * TemplateEngine Spec5: non-visible character in templates should not affect the result
      */
     @Test
-    public void templateNonVisibleChar(){
+    public void ENG_SPEC5_TemplateNonVisibleChar(){
         map.store("middle name", "Adam", false);
         String result = engine.evaluate("${middle name}! Hello!", map, "keep-unmatched");
         String result2 = engine.evaluate("${middlename}! Hello!", map, "keep-unmatched");
@@ -160,6 +199,15 @@ public class Task1 {
      * occurrence acts as a boundary of at MOST one template.
      * 
      */
+    @Test
+    public void ENG_SPEC6_BoundariesMatching(){
+    	map.store("name", "Adam", false);
+    	String result = engine.evaluate("}${name}, hello!${", map, "keep-unmatched");
+    	
+    	assertEquals(result, "}Adam, hello!${");
+    }
+    
+    
     
     /*
      * TemplateEngine Spec7: Templates are stored in order of length, thus "competition" will be 
@@ -167,7 +215,7 @@ public class Task1 {
      * 
      */
     @Test
-    public void templateStringBoundaryOccurence(){
+    public void ENG_SPEC7_PatternsOrdering(){
         map.store("name", "Adam", false);
         map.store("competition", "this won't be shown", false);
         map.store("we should try or best for winning the this won't be shown cup.", "this should be shown", false);
@@ -177,5 +225,24 @@ public class Task1 {
         assertEquals(result, "I heard that }: Adam said: this should be shown");
     }
     
+    /*
+     * TemplateEngine Spec8: Templates are matched one at a time exhaustively, according to the order.
+     * 
+     * If delete-unmatched templates, the ${age ${symbol}} can be substituted, as ${symbol} will be deleted;
+     * If keep-unmatched templates, the ${age ${symbol}} cannot be substituted, 
+     * as ${age ${symbol}} does not match with ${age}
+     */
+    @Test
+    public void ENG_SPEC8_ExhaustReplacement(){
+    	map.store("name", "Adam", false);
+    	map.store("surname", "Dykes", false);
+    	map.store("age", "29", false);
+    	
+    	String result = engine.evaluate("Hello ${name}, is your age ${age ${symbol}}", map, "delete-unmatched");
+    	assertEquals(result, "Hello Adam, is your age 29");
+    	
+    	String result2 = engine.evaluate("Hello ${name}, is your age ${age ${symbol}}", map, "keep-unmatched");
+    	assertEquals(result2, "Hello Adam, is your age ${age ${symbol}}");
+    }
     
 }
